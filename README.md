@@ -2,6 +2,10 @@
 this tool is currently in development. As of right now all the bot can do is send post requests given a curl command. 
 #
 
+# Usage
+./main [curl command]
+#
+
 # "Roadmap" <br >
 ## Arguments System <br>
 Different types of http requests X <br>
