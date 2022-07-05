@@ -10,7 +10,7 @@ this tool is currently in development. As of right now all the bot can do is sen
 ## Arguments System <br>
 Different types of http requests X <br>
 User set rate limits X <br>
-Threading system X <br>
+Threading system O <br>
 Verbose mode X <br>
 ##
 
