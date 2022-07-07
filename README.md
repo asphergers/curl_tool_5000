@@ -15,7 +15,7 @@ gcc -lcurl main.c --output main
 # "Roadmap" <br >
 ## Arguments System <br>
 Different types of http requests X <br>
-User set rate limits X <br>
+User set rate limits O <br>
 Threading system O <br>
 Verbose mode X <br>
 ##
