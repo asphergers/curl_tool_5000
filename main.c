@@ -5,13 +5,20 @@
 #include<curl/curl.h>
 #include<pthread.h>
 
+#define MAX_THREADS 30
+
 struct request_loop_args {
     CURL *curl;
     int threadNumber;
+    int cycles;
 };
 
-int nums[30];
+int argc;
+int nums[MAX_THREADS];
 
+void set_input_size(int len) {
+    argc = len;
+}
 
 size_t function_pt(void *ptr, size_t size, size_t nmemb, void *stream){
     //("%d", atoi(ptr));
@@ -19,11 +26,7 @@ size_t function_pt(void *ptr, size_t size, size_t nmemb, void *stream){
 }
 
 
-CURL *build(int argc, char** argv, CURL *curl, struct curl_slist *header) {
-    const char *inputs[argc-1];
-    for (int i = 0; i<argc-1; i++) {
-        inputs[i] = argv[i+1];
-    }
+CURL *build(char* inputs[], CURL *curl, struct curl_slist *header) {
 
     for (int i = 0; i<argc; i++) {
         if (strcmp(inputs[i], "-H") == 0) {
@@ -57,10 +60,12 @@ void* request_loop(void *arguments) {
 
     int threadNumber = args->threadNumber;
     CURL *curl = args->curl;
+    int cycles = args->cycles;
+
 
     CURLcode res;
     int count = 0;
-    while (1 > 0) {
+    while (count != cycles) {
         res = curl_easy_perform(curl);
         long http_code;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
@@ -76,20 +81,28 @@ void* request_loop(void *arguments) {
         }
         
         nums[threadNumber]++;
-        sleep(0.900);
+        cycles--;
     } 
+    exit(0);
 }
 
-int get_threads(int argc, char** argv) {
-    const char* inputs[argc-1];
+int get_cycles(char* inputs[]) {
+
     for (int i = 0; i<argc-1; i++) {
-        inputs[i] = argv[i+1];        
+        if (strcmp(inputs[i], "-cycles") == 0) {
+            return atoi(inputs[i+1]);
+        } 
     }
+
+    return -1;
+}
+
+int get_threads(char* inputs[]) {
 
     for (int i = 0; i<argc-1; i++) {
         if (strcmp(inputs[i], "-threads") == 0) {
-            if (atoi(inputs[i+1]) > 30) {
-                printf("AMOUNT OF THREADS MUST NOT EXCEED 30");
+            if (atoi(inputs[i+1]) > MAX_THREADS) {
+                printf("AMOUNT OF THREADS MUST NOT EXCEED %d", MAX_THREADS);
                 exit(0);
             }
             return atoi(inputs[i+1]);
@@ -110,42 +123,45 @@ void *num_manager(void *thds) {
     }
 }
 
-void init_curls(int argc, char** argv, struct curl_slist *header, int threads, CURL *curl[]) {
+void init_curls(char** argv, struct curl_slist *header, int threads, CURL *curl[]) {
     for (int i = 0; i<threads; i++) {
         curl[i] = curl_easy_init();
-        curl[i] = build(argc, argv, curl[i], header);
+        curl[i] = build(argv, curl[i], header);
     }
 }
 
-void init_args(CURL *curl[], int threads, struct request_loop_args args[]) {
+void init_args(CURL *curl[], int threads, int cycles, struct request_loop_args args[]) {
     for (int i = 0; i<threads; i++) {
         args[i].curl = curl[i];
         args[i].threadNumber = i;
+        args[i].cycles = cycles;
     }
 }
 
+
 int main(int argc, char** argv) {
 
-    int threads = get_threads(argc, argv); 
+    set_input_size(argc);
+    int threads = get_threads(argv); 
+    int cycles = get_cycles(argv);
     pthread_t thread_arr[threads];
     pthread_t output;
     CURL *curl[threads];
     CURLcode res;
     struct curl_slist *header = NULL;
     struct request_loop_args args[threads];
-    init_curls(argc, argv, header, threads, curl);
-    init_args(curl, threads, args);
+    init_curls(argv, header, threads, curl);
+    init_args(curl, threads, cycles, args);
     //printf("%p \n", curl[0]);
 
     if(curl) {
         for (int i = 0; i < threads; i++) {
             pthread_create(&thread_arr[i], NULL, request_loop, (void *)&args[i]);
         }
-        
         pthread_create(&output, NULL, num_manager, (void *)&threads);
-
         pthread_exit(NULL);
     }
     curl_global_cleanup();
     return 0;
 }
+
