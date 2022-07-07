@@ -11,6 +11,7 @@ struct request_loop_args {
     CURL *curl;
     int threadNumber;
     int cycles;
+    float rate;
 };
 
 int argc;
@@ -61,11 +62,10 @@ void* request_loop(void *arguments) {
     int threadNumber = args->threadNumber;
     CURL *curl = args->curl;
     int cycles = args->cycles;
-
+    float rate = args->rate;
 
     CURLcode res;
-    int count = 0;
-    while (count != cycles) {
+    while (cycles != 0) {
         res = curl_easy_perform(curl);
         long http_code;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
@@ -79,7 +79,7 @@ void* request_loop(void *arguments) {
             nums[threadNumber]--;
             sleep(15);
         }
-        
+        sleep(rate);   
         nums[threadNumber]++;
         cycles--;
     } 
@@ -87,7 +87,6 @@ void* request_loop(void *arguments) {
 }
 
 int get_cycles(char* inputs[]) {
-
     for (int i = 0; i<argc-1; i++) {
         if (strcmp(inputs[i], "-cycles") == 0) {
             return atoi(inputs[i+1]);
@@ -98,7 +97,6 @@ int get_cycles(char* inputs[]) {
 }
 
 int get_threads(char* inputs[]) {
-
     for (int i = 0; i<argc-1; i++) {
         if (strcmp(inputs[i], "-threads") == 0) {
             if (atoi(inputs[i+1]) > MAX_THREADS) {
@@ -109,6 +107,15 @@ int get_threads(char* inputs[]) {
         }
     }
     return 1;
+}
+
+float get_rate(char* inputs[]) {
+    for (int i = 0; i<argc-1; i++) {
+        if (strcmp(inputs[i], "-rate") == 0) {
+            return atof(inputs[i+1]);
+        }
+    }
+    return 0.0;
 }
 
 void *num_manager(void *thds) {
@@ -130,11 +137,12 @@ void init_curls(char** argv, struct curl_slist *header, int threads, CURL *curl[
     }
 }
 
-void init_args(CURL *curl[], int threads, int cycles, struct request_loop_args args[]) {
+void init_args(CURL *curl[], int threads, int cycles, float rate, struct request_loop_args args[]) {
     for (int i = 0; i<threads; i++) {
         args[i].curl = curl[i];
         args[i].threadNumber = i;
         args[i].cycles = cycles;
+        args[i].rate = rate;
     }
 }
 
@@ -144,6 +152,7 @@ int main(int argc, char** argv) {
     set_input_size(argc);
     int threads = get_threads(argv); 
     int cycles = get_cycles(argv);
+    float rate = get_rate(argv);
     pthread_t thread_arr[threads];
     pthread_t output;
     CURL *curl[threads];
@@ -151,7 +160,7 @@ int main(int argc, char** argv) {
     struct curl_slist *header = NULL;
     struct request_loop_args args[threads];
     init_curls(argv, header, threads, curl);
-    init_args(curl, threads, cycles, args);
+    init_args(curl, threads, cycles, rate, args);
     //printf("%p \n", curl[0]);
 
     if(curl) {
