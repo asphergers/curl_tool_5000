@@ -20,7 +20,6 @@ size_t function_pt(void *ptr, size_t size, size_t nmemb, void *stream){
 
 
 CURL *build(int argc, char** argv, CURL *curl, struct curl_slist *header) {
-    size_t header_callback(char *ptr, size_t size, size_t nmemb, void *userdata);
     const char *inputs[argc-1];
     for (int i = 0; i<argc-1; i++) {
         inputs[i] = argv[i+1];
