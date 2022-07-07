@@ -10,9 +10,17 @@ struct request_loop_args {
     int threadNumber;
 };
 
-int nums[] = {0,0,0,0,0};
+int nums[30];
+
+
+size_t function_pt(void *ptr, size_t size, size_t nmemb, void *stream){
+    //("%d", atoi(ptr));
+    return size * nmemb;
+}
+
 
 CURL *build(int argc, char** argv, CURL *curl, struct curl_slist *header) {
+    size_t header_callback(char *ptr, size_t size, size_t nmemb, void *userdata);
     const char *inputs[argc-1];
     for (int i = 0; i<argc-1; i++) {
         inputs[i] = argv[i+1];
@@ -36,10 +44,11 @@ CURL *build(int argc, char** argv, CURL *curl, struct curl_slist *header) {
         if (strcmp(inputs[i], "--data-raw") == 0) {
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, inputs[i+1]);
             break;
-        }
+        }  
     }
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, function_pt);
 
     return curl;
 }
@@ -54,13 +63,21 @@ void* request_loop(void *arguments) {
     int count = 0;
     while (1 > 0) {
         res = curl_easy_perform(curl);
+        long http_code;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 
         if (res != CURLE_OK) {
             printf("%s \n", curl_easy_strerror(res));
             continue;
         }
+
+        if (http_code == 429) {
+            nums[threadNumber]--;
+            sleep(15);
+        }
         
         nums[threadNumber]++;
+        sleep(0.900);
     } 
 }
 
@@ -72,16 +89,24 @@ int get_threads(int argc, char** argv) {
 
     for (int i = 0; i<argc-1; i++) {
         if (strcmp(inputs[i], "-threads") == 0) {
-            //printf("%d \n", atoi(inputs[i+1]));
+            if (atoi(inputs[i+1]) > 30) {
+                printf("AMOUNT OF THREADS MUST NOT EXCEED 30");
+                exit(0);
+            }
             return atoi(inputs[i+1]);
         }
     }
     return 1;
 }
 
-void *num_manager() {
+void *num_manager(void *thds) {
+   int threads = *(int *)thds;
+   printf("%d \n", threads);
     while (1>0) {
-        printf("\r %d %d %d %d %d", nums[0], nums[1], nums[2], nums[3], nums[4]);
+        for (int i = 0; i<threads; i++) {
+            printf("%d  ", nums[i]);
+        }
+        printf("\r");
         fflush(stdout);
     }
 }
@@ -118,7 +143,7 @@ int main(int argc, char** argv) {
             pthread_create(&thread_arr[i], NULL, request_loop, (void *)&args[i]);
         }
         
-        pthread_create(&output, NULL, num_manager, NULL);
+        pthread_create(&output, NULL, num_manager, (void *)&threads);
 
         pthread_exit(NULL);
     }
