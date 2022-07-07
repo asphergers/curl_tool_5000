@@ -3,7 +3,13 @@ this tool is currently in development. As of right now all the bot can do is sen
 #
 
 # Usage
-./main [curl command]
+## Compiling
+gcc -lcurl main.c --output main
+##
+## Running
+ ./main [curl command], to run to send out the curl request repeatedly on 1 thread <br>
+ ./main [curl command] -threads [thread amount], does the same as the pervious example but on multiple threads with a max of 30 threads.
+##
 #
 
 # "Roadmap" <br >
@@ -21,5 +27,5 @@ concurrent thread counting X <br>
 #
 
 # Know Bugs
- Sometimes libcurl will print "Server Error" to the stdout but still return an OK so the error isn't handeled <br>
+ 
 #
