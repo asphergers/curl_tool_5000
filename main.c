@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<stdbool.h>
 #include<unistd.h>
 #include<string.h>
 #include<curl/curl.h>
@@ -12,6 +13,10 @@ struct request_loop_args {
     int threadNumber;
     int cycles;
     float rate;
+};
+
+struct output_options {
+    bool debug;
 };
 
 int argc;
@@ -48,13 +53,39 @@ CURL *build(char* inputs[], CURL *curl, struct curl_slist *header) {
         if (strcmp(inputs[i], "--data-raw") == 0) {
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, inputs[i+1]);
             break;
-        }  
+        }
+        curl_easy_setopt(curl, CURLOPT_POST, 1);
     }
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, function_pt);
 
     return curl;
+}
+
+void print_request_info(char* inputs[]) {
+    printf("-----------HEADERS-----------\n");
+    for (int i = 0; i<argc; i++) {
+        if (strcmp(inputs[i], "-H") == 0) {
+            printf("%s\n", inputs[i+1]);
+            i++;
+        }
+    }
+    printf("--------POST FIELDS-------\n");
+    for (int i = 0; i<argc; i++) {
+        if (strcmp(inputs[i], "--data-raw") == 0) {
+            printf("%s\n", inputs[i+1]);
+        }
+    }
+    printf("-----------URL-----------\n");
+    for (int i = 0; i<argc; i++) {
+        if (strstr(inputs[i], "http") != NULL) {
+            printf("%s\n", inputs[i]);
+            break;
+        }
+    }
+
+
 }
 
 void* request_loop(void *arguments) {
@@ -64,7 +95,6 @@ void* request_loop(void *arguments) {
     CURL *curl = args->curl;
     int cycles = args->cycles;
     float rate = args->rate;
-
     CURLcode res;
     while (cycles != 0) {
         res = curl_easy_perform(curl);
@@ -150,13 +180,12 @@ void init_args(CURL *curl[], int threads, int cycles, float rate, struct request
     }
 }
 
-
 int main(int argc, char** argv) {
-
     set_input_size(argc);
     int threads = get_threads(argv); 
     int cycles = get_cycles(argv);
     float rate = get_rate(argv);
+    print_request_info(argv);
     pthread_t thread_arr[threads];
     pthread_t output;
     CURL *curl[threads];
