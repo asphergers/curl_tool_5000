@@ -16,6 +16,7 @@ struct request_loop_args {
 
 int argc;
 int nums[MAX_THREADS];
+int return_codes[MAX_THREADS];
 
 void set_input_size(int len) {
     argc = len;
@@ -77,10 +78,13 @@ void* request_loop(void *arguments) {
 
         if (http_code == 429) {
             nums[threadNumber]--;
+            return_codes[threadNumber] = http_code;
             sleep(15);
+            continue;
         }
         sleep(rate);   
         nums[threadNumber]++;
+        return_codes[threadNumber] = http_code;
         cycles--;
     } 
     exit(0);
@@ -123,7 +127,7 @@ void *num_manager(void *thds) {
    printf("%d \n", threads);
     while (1>0) {
         for (int i = 0; i<threads; i++) {
-            printf("%d  ", nums[i]);
+            printf("%d: [%d] ", nums[i], return_codes[i]);
         }
         printf("\r");
         fflush(stdout);
@@ -173,4 +177,3 @@ int main(int argc, char** argv) {
     curl_global_cleanup();
     return 0;
 }
-
