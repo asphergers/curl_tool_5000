@@ -28,12 +28,12 @@ void set_input_size(int len) {
 }
 
 size_t function_pt(void *ptr, size_t size, size_t nmemb, void *stream){
-    //("%d", atoi(ptr));
+    ("%d", atoi(ptr));
     return size * nmemb;
 }
 
 
-CURL *build(char* inputs[], CURL *curl, struct curl_slist *header) {
+CURL *build(char* inputs[], CURL *curl, struct curl_slist *header, long post_type) {
 
     for (int i = 0; i<argc; i++) {
         if (strcmp(inputs[i], "-H") == 0) {
@@ -49,12 +49,15 @@ CURL *build(char* inputs[], CURL *curl, struct curl_slist *header) {
         }
     }
 
-    for (int i = 0; i<argc; i++) {
-        if (strcmp(inputs[i], "--data-raw") == 0) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, inputs[i+1]);
-            break;
+    if (post_type == CURLOPT_POSTFIELDS) {
+        for (int i = 0; i<argc; i++) {
+            if (strcmp(inputs[i], "--data-raw") == 0) {
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, inputs[i+1]);
+                break;
+            }
         }
-        curl_easy_setopt(curl, CURLOPT_POST, 1);
+    } else if (post_type == CURLOPT_POST) {
+        curl_easy_setopt(curl, CURLOPT_POST, 2L);
     }
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
@@ -84,8 +87,6 @@ void print_request_info(char* inputs[]) {
             break;
         }
     }
-
-
 }
 
 void* request_loop(void *arguments) {
@@ -164,10 +165,10 @@ void *num_manager(void *thds) {
     }
 }
 
-void init_curls(char** argv, struct curl_slist *header, int threads, CURL *curl[]) {
+void init_curls(char** argv, struct curl_slist *header, int threads, CURL *curl[], long request_type) {
     for (int i = 0; i<threads; i++) {
         curl[i] = curl_easy_init();
-        curl[i] = build(argv, curl[i], header);
+        curl[i] = build(argv, curl[i], header, request_type);
     }
 }
 
@@ -180,29 +181,40 @@ void init_args(CURL *curl[], int threads, int cycles, float rate, struct request
     }
 }
 
-int main(int argc, char** argv) {
-    set_input_size(argc);
-    int threads = get_threads(argv); 
+long get_request_type(char* inputs[]) {
+    for (int i = 0; i<argc-1; i++) {
+        if (strcmp(inputs[i], "-type") == 0) {
+            return atoi(inputs[i+1]);
+        }
+    }
+    return CURLOPT_POSTFIELDS;
+}
+
+void handle_request(char** argv) {
+    int threads = get_threads(argv);
     int cycles = get_cycles(argv);
-    float rate = get_rate(argv);
-    print_request_info(argv);
+    int rate = get_rate(argv); 
+    long request_type = get_request_type(argv);
     pthread_t thread_arr[threads];
     pthread_t output;
     CURL *curl[threads];
-    CURLcode res;
     struct curl_slist *header = NULL;
     struct request_loop_args args[threads];
-    init_curls(argv, header, threads, curl);
-    init_args(curl, threads, cycles, rate, args);
-    //printf("%p \n", curl[0]);
+    init_curls(argv, header, threads, curl, request_type);
+    init_args(curl, threads, cycles, rate, args); 
 
-    if(curl) {
-        for (int i = 0; i < threads; i++) {
-            pthread_create(&thread_arr[i], NULL, request_loop, (void *)&args[i]);
-        }
-        pthread_create(&output, NULL, num_manager, (void *)&threads);
-        pthread_exit(NULL);
+    for (int i = 0; i<threads; i++) {
+        pthread_create(&thread_arr[i], NULL, request_loop, (void *)&args[i]);
     }
-    curl_global_cleanup();
+
+    pthread_create(&output, NULL, num_manager, (void *)&threads);
+    pthread_exit(NULL);
+}
+
+int main(int argc, char** argv) {
+    set_input_size(argc);
+    
+    handle_request(argv);
+
     return 0;
 }
