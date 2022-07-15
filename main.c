@@ -15,10 +15,6 @@ struct request_loop_args {
     float rate;
 };
 
-struct output_options {
-    bool debug;
-};
-
 int argc;
 int nums[MAX_THREADS];
 int return_codes[MAX_THREADS];
@@ -33,7 +29,7 @@ size_t function_pt(void *ptr, size_t size, size_t nmemb, void *stream){
 }
 
 
-CURL *build(char* inputs[], CURL *curl, struct curl_slist *header, long post_type) {
+CURL *build(char* inputs[], CURL *curl, struct curl_slist *header, int post_type) {
 
     for (int i = 0; i<argc; i++) {
         if (strcmp(inputs[i], "-H") == 0) {
@@ -49,15 +45,38 @@ CURL *build(char* inputs[], CURL *curl, struct curl_slist *header, long post_typ
         }
     }
 
-    if (post_type == CURLOPT_POSTFIELDS) {
-        for (int i = 0; i<argc; i++) {
-            if (strcmp(inputs[i], "--data-raw") == 0) {
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, inputs[i+1]);
-                break;
+    if (post_type > 19 && post_type < 30) {
+        if (post_type != 23) {
+            char* post_data;
+            for (int i = 0; i<argc; i++) {
+                if (strcmp(inputs[i], "--data-raw") == 0) {
+                    printf("%s", post_data);
+                    break;
+                }
             }
+            if (post_type < 23) {
+                if (post_type == 21) {
+                    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+                } else if (post_type == 22) {
+                    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+                }
+
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
+
+            } else {
+                printf("invalid post code \n");
+            }
+
+        } else {
+            curl_easy_setopt(curl, CURLOPT_POST, 2L);
         }
-    } else if (post_type == CURLOPT_POST) {
-        curl_easy_setopt(curl, CURLOPT_POST, 2L);
+    
+    } else if (post_type > 9 && post_type < 11) {
+        if (post_type != 10) {
+            ;
+        } else {
+            ;
+        }
     }
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
@@ -113,6 +132,7 @@ void* request_loop(void *arguments) {
             sleep(15);
             continue;
         }
+
         sleep(rate);   
         nums[threadNumber]++;
         return_codes[threadNumber] = http_code;
@@ -138,9 +158,11 @@ int get_threads(char* inputs[]) {
                 printf("AMOUNT OF THREADS MUST NOT EXCEED %d", MAX_THREADS);
                 exit(0);
             }
+
             return atoi(inputs[i+1]);
         }
     }
+
     return 1;
 }
 
@@ -181,20 +203,20 @@ void init_args(CURL *curl[], int threads, int cycles, float rate, struct request
     }
 }
 
-long get_request_type(char* inputs[]) {
+int get_request_type(char* inputs[]) {
     for (int i = 0; i<argc-1; i++) {
         if (strcmp(inputs[i], "-type") == 0) {
             return atoi(inputs[i+1]);
         }
     }
-    return CURLOPT_POSTFIELDS;
+    return 20;
 }
 
 void handle_request(char** argv) {
     int threads = get_threads(argv);
     int cycles = get_cycles(argv);
     int rate = get_rate(argv); 
-    long request_type = get_request_type(argv);
+    int request_type = get_request_type(argv);
     pthread_t thread_arr[threads];
     pthread_t output;
     CURL *curl[threads];
