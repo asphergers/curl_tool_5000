@@ -33,7 +33,3 @@ Header and information conformation screen X <br>
 concurrent thread counting O <br>
 ##
 #
-
-# Know Bugs
- 
-#
