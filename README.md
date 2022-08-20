@@ -29,7 +29,7 @@ Verbose mode X <br>
 ##
 
 ## Terminal Design <br>
-Header and information conformation screen X <br>
+Header and information conformation screen O <br>
 concurrent thread counting O <br>
 ##
 #
